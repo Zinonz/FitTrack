@@ -2,4 +2,7 @@ import tkinter as tk
 
 root = tk.Tk()
 
+root.geometry("430x932")
+root.title("FitTrack")
+
 root.mainloop()
