@@ -1,7 +1,52 @@
 import tkinter as tk
-from tkinter import Canvas
+from tkinter import Canvas, messagebox
+import sqlite3
+
+def create_database():
+    conn = sqlite3.connect("customers.db")
+    cursor = conn.cursor()
+    cursor.execute('''CREATE TABLE IF NOT EXISTS Customers (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        username TEXT UNIQUE,
+                        password TEXT)''')
+    conn.commit()
+    conn.close()
+
+def insert_user(username, password):
+    conn = sqlite3.connect("customers.db")
+    cursor = conn.cursor()
+    try:
+        cursor.execute("INSERT INTO Customers (username, password) VALUES (?, ?)", (username, password))
+        conn.commit()
+    except sqlite3.IntegrityError:
+        messagebox.showerror("Error", "Username already exists!")
+    conn.close()
+
+def check_credentials(username, password):
+    conn = sqlite3.connect("customers.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM Customers WHERE username=? AND password=?", (username, password))
+    user = cursor.fetchone()
+    conn.close()
+    return user
+
+def open_landing_page():
+    landing_page = tk.Toplevel(root)
+    landing_page.title("Welcome")
+    landing_page.geometry("400x400")
+    landing_page.configure(bg="black")
+    tk.Label(landing_page, text="Welcome!", fg="red", bg="black", font=("Arial", 20, "bold")).pack(pady=20)
 
 def open_create_account():
+    def submit_details():
+        username = username_entry.get()
+        password = password_entry.get()
+        if username and password:
+            insert_user(username, password)
+            create_window.destroy()
+        else:
+            messagebox.showerror("Error", "Please enter both username and password")
+    
     create_window = tk.Toplevel(root)
     create_window.title("Create Account")
     create_window.geometry("400x400")
@@ -17,9 +62,19 @@ def open_create_account():
     password_entry = tk.Entry(create_window, show="*", font=("Arial", 14), bg="gray", fg="white", width=30)
     password_entry.pack(pady=5)
     
-    tk.Button(create_window, text="Submit", fg="white", bg="red", font=("Arial", 14, "bold"), command=create_window.destroy).pack(pady=20)
+    tk.Button(create_window, text="Submit", fg="white", bg="red", font=("Arial", 14, "bold"), command=submit_details).pack(pady=20)
 
 def open_sign_in():
+    def handle_login():
+        username = username_entry.get()
+        password = password_entry.get()
+        user = check_credentials(username, password)
+        if user:
+            sign_in_window.destroy()
+            open_landing_page()
+        else:
+            messagebox.showerror("Error", "Incorrect username or password")
+    
     sign_in_window = tk.Toplevel(root)
     sign_in_window.title("Sign In")
     sign_in_window.geometry("400x400")
@@ -35,8 +90,7 @@ def open_sign_in():
     password_entry = tk.Entry(sign_in_window, show="*", font=("Arial", 14), bg="gray", fg="white", width=30)
     password_entry.pack(pady=5)
     
-    tk.Button(sign_in_window, text="Submit", fg="white", bg="red", font=("Arial", 14, "bold"), command=sign_in_window.destroy).pack(pady=20)
-
+    tk.Button(sign_in_window, text="Submit", fg="white", bg="red", font=("Arial", 14, "bold"), command=handle_login).pack(pady=20)
 
 def create_rounded_rectangle(canvas, x1, y1, x2, y2, radius, **kwargs):
     points = [
@@ -60,16 +114,16 @@ def create_rounded_button(canvas, x, y, width, height, text, command, bg, fg):
     button_bg = create_rounded_rectangle(canvas, x, y, x + width, y + height, radius, fill=bg, outline=bg)
     button_text = canvas.create_text(x + width / 2, y + height / 2, text=text, fill=fg, font=("Arial", 20, "bold"))
     
-    # Bind click event properly (Fixed issue)
     canvas.tag_bind(button_bg, "<Button-1>", lambda event: command())
     canvas.tag_bind(button_text, "<Button-1>", lambda event: command())
-
 
 # Create the main window
 root = tk.Tk()
 root.title("FitTrack")
 root.geometry("430x932")  # Set window size
 root.configure(bg="black")  # Set background color
+
+create_database()
 
 # Create and place the app name label
 label = tk.Label(root, text="FitTrack", fg="red", bg="black", font=("Arial", 50, "bold"))
